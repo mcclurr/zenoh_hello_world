@@ -1,0 +1,20 @@
+services:
+  zenoh:
+    image: eclipse/zenoh:latest
+    ports:
+      - "7447:7447"   # zenoh TCP
+      - "8000:8000"   # REST API
+    environment:
+      - RUST_LOG=info
+
+  pub:
+    build: ./app
+    command: ["python", "-u", "pub.py"]
+    depends_on:
+      - zenoh
+
+  sub:
+    build: ./app
+    command: ["python", "-u", "sub.py"]
+    depends_on:
+      - zenoh
