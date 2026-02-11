@@ -6,6 +6,11 @@ edition = "2021"
 [dependencies]
 zenoh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
 flume = "0.11"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
 chrono = "0.4"
-anyhow = "1"
+

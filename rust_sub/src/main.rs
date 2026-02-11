@@ -1,15 +1,30 @@
-mod logger;
-mod subscriber;
+use chrono::Local;
+use tracing::info;
+use tracing_appender::non_blocking;
+use tracing_subscriber::EnvFilter;
 
-use logger::Logger;
+mod subscriber;
 
 type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[tokio::main]
 async fn main() -> Result<(), DynError> {
-    let logger = Logger::new("out")?;
+    std::fs::create_dir_all("out")?;
 
-    logger.info("Rust subscriber container starting up");
+    let filename = format!("{}.log", Local::now().format("%Y%m%d_%H%M%S"));
+    let file = std::fs::File::create(format!("out/{}", filename))?;
 
-    subscriber::run(&logger).await
+    let (non_blocking_file, _guard) = non_blocking(file);
+
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(non_blocking_file)
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(false)
+        .with_ansi(false)   // ← THIS is the fix
+        .init();
+
+    info!("Logger initialized");
+    subscriber::run().await
 }

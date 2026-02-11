@@ -24,6 +24,6 @@ services:
     depends_on:
       - zenoh
     environment:
-      - LOG_LEVEL=debug
+      - RUST_LOG=rust_sub=debug,zenoh=info
     volumes:
       - ./rust_sub/out:/app/out
