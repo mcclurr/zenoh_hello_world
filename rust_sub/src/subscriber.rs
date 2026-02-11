@@ -8,6 +8,8 @@ type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 pub async fn run(logger: &Logger) -> Result<(), DynError> {
     let key = "demo/hello";
 
+    logger.info("Starting Rust Zenoh subscriber…");
+
     let conf = Config::from_json5(r#"
     {
       mode: "client",
@@ -15,30 +17,32 @@ pub async fn run(logger: &Logger) -> Result<(), DynError> {
     }
     "#)?;
 
+    logger.debug("Opening Zenoh session…");
     let session: Session = zenoh::open(conf).await?;
 
-    logger.log(format!("Rust subscriber started. Subscribing to '{key}'"));
-    logger.log(format!("Logging to: {}", logger.path().display()));
+    logger.info(format!("Subscribed to key: '{}'", key));
+    logger.info(format!("Log file: {}", logger.path().display()));
 
     let sub = session
         .declare_subscriber(key)
         .with(flume::bounded(64))
         .await?;
 
+    logger.info("Waiting for messages…");
+
     loop {
         let sample = sub.recv_async().await?;
 
         match sample.payload().try_to_string() {
-            Ok(s) => logger.log(format!(
+            Ok(s) => logger.debug(format!(
                 "Received: key_expr={} payload='{}'",
                 sample.key_expr(),
                 s
             )),
             Err(e) => {
-                // If it isn't valid UTF-8, fall back to raw bytes (may allocate if fragmented)
                 let bytes = sample.payload().to_bytes();
-                logger.log(format!(
-                    "Received: key_expr={} payload_bytes={:?} (utf8_error={})",
+                logger.warn(format!(
+                    "Received non-UTF8 payload: key_expr={} bytes={:?} err={}",
                     sample.key_expr(),
                     bytes,
                     e
@@ -46,5 +50,4 @@ pub async fn run(logger: &Logger) -> Result<(), DynError> {
             }
         }
     }
-
 }
