@@ -2,8 +2,8 @@ services:
   zenoh:
     image: eclipse/zenoh:latest
     ports:
-      - "7447:7447"   # zenoh TCP
-      - "8000:8000"   # REST API
+      - "7447:7447"
+      - "8000:8000"
     environment:
       - RUST_LOG=info
 
@@ -18,3 +18,10 @@ services:
     command: ["python", "-u", "sub.py"]
     depends_on:
       - zenoh
+
+  rust_sub:
+    build: ./rust_sub
+    depends_on:
+      - zenoh
+    volumes:
+      - ./rust_sub/out:/app/out
