@@ -17,7 +17,7 @@ impl Logger {
         let out_dir = out_dir.as_ref();
         fs::create_dir_all(out_dir)?;
 
-        let filename = format!("{}.log", Local::now().format("%Y%m%d%H%M"));
+        let filename = format!("{}.log", Local::now().format("%Y%m%d_%H%M%S"));
         let path = out_dir.join(filename);
 
         let file = std::fs::OpenOptions::new()
@@ -31,12 +31,26 @@ impl Logger {
         })
     }
 
+    /// Core log function with caller info
+    #[track_caller]
     pub fn log(&self, line: impl AsRef<str>) {
-        // Best-effort logging: don't panic if file write fails.
         let ts = Local::now().format("%Y-%m-%d %H:%M:%S");
-        let msg = format!("[{}] {}\n", ts, line.as_ref());
 
-        // stdout too (handy for docker compose logs)
+        let loc = std::panic::Location::caller();
+        let file = loc.file();
+        let line_no = loc.line();
+
+        // Just the filename instead of full path
+        let short_file = file.rsplit('/').next().unwrap_or(file);
+
+        let msg = format!(
+            "[{}] [{}:{}] {}\n",
+            ts,
+            short_file,
+            line_no,
+            line.as_ref()
+        );
+
         print!("{}", msg);
 
         if let Ok(mut f) = self.file.lock() {
