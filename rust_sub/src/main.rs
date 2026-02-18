@@ -8,6 +8,7 @@ mod models;
 use messaging::subscriber::Subscriber; // trait
 use messaging::zenoh::subscriber::ZenohSubscriber; // concrete impl
 use models::hello_msg::HelloMsg;
+use models::metrics_msg::MetricsMsg;
 
 type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -18,6 +19,36 @@ fn zenoh_client_config() -> Result<zenoh::Config, DynError> {
       connect: { endpoints: ["tcp/zenoh:7447"] }
     }
     "#)?)
+}
+
+async fn run_hello(mut sub: ZenohSubscriber) -> Result<(), DynError> {
+    loop {
+        let (key_expr, payload) = sub.recv().await?;
+        if let Ok(s) = std::str::from_utf8(&payload) {
+            match serde_json::from_str::<HelloMsg>(s) {
+                Ok(msg) => info!(
+                    "[HELLO] key={} msg='{}' counter={} temp={} ts={}",
+                    key_expr, msg.msg, msg.counter, msg.temperature, msg.timestamp
+                ),
+                Err(e) => info!("[HELLO] key={} JSON parse failed: {}", key_expr, e),
+            }
+        }
+    }
+}
+
+async fn run_metrics(mut sub: ZenohSubscriber) -> Result<(), DynError> {
+    loop {
+        let (key_expr, payload) = sub.recv().await?;
+        if let Ok(s) = std::str::from_utf8(&payload) {
+            match serde_json::from_str::<MetricsMsg>(s) {
+                Ok(m) => info!(
+                    "[METRICS] key={} cpu={} mem={} ts={}",
+                    key_expr, m.cpu, m.mem, m.timestamp
+                ),
+                Err(e) => info!("[METRICS] key={} JSON parse failed: {}", key_expr, e),
+            }
+        }
+    }
 }
 
 #[tokio::main]
@@ -39,26 +70,19 @@ async fn main() -> Result<(), DynError> {
         .init();
 
     info!("Logger initialized");
-    let key = "demo/hello";
-    let conf = zenoh_client_config()?;
 
-    // This is the “real subscriber” (concrete implementation)
-    let mut sub = ZenohSubscriber::new(key, conf).await?;
+    let conf1 = zenoh_client_config()?;
+    let conf2 = zenoh_client_config()?;
 
-    info!("Listening on {}", key);
+    let hello_sub = ZenohSubscriber::new("demo/hello", conf1).await?;
+    let metrics_sub = ZenohSubscriber::new("demo/metrics", conf2).await?;
 
-    loop {
-        let (key_expr, payload) = sub.recv().await?;
+    let t1 = tokio::spawn(async move { run_hello(hello_sub).await });
+    let t2 = tokio::spawn(async move { run_metrics(metrics_sub).await });
 
-        match std::str::from_utf8(&payload) {
-            Ok(s) => match serde_json::from_str::<HelloMsg>(s) {
-                Ok(msg) => info!(
-                    "Received: key={} msg='{}' counter={} temp={} ts={}",
-                    key_expr, msg.msg, msg.counter, msg.temperature, msg.timestamp
-                ),
-                Err(e) => info!("Received key={} but JSON parse failed: {}", key_expr, e),
-            },
-            Err(_) => info!("Received key={} non-utf8 payload len={}", key_expr, payload.len()),
-        }
-    }
+    // If either task returns an error, bubble it up:
+    t1.await??;
+    t2.await??;
+
+    Ok(())
 }
