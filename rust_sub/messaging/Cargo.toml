@@ -1,0 +1,10 @@
+[package]
+name = "messaging"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+zenoh = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+flume = "0.11"

@@ -3,10 +3,15 @@ name = "rust_sub"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["messaging"]
+resolver = "2"
+
 [dependencies]
+messaging = { path = "messaging" }
+
 zenoh = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-
 flume = "0.11"
 
 tracing = "0.1"

@@ -2,13 +2,13 @@ use flume::Receiver;
 use zenoh::{Config, Session};
 use async_trait::async_trait;
 
-use crate::messaging::subscriber::Subscriber;
+use crate::subscriber::Subscriber;
 
 type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 pub struct ZenohSubscriber {
     _session: Session,               // keep session alive
-    sub: zenoh::pubsub::Subscriber<flume::Receiver<zenoh::sample::Sample>>,
+    sub: zenoh::pubsub::Subscriber<Receiver<zenoh::sample::Sample>>,
 }
 
 impl ZenohSubscriber {

@@ -3,7 +3,6 @@ use tracing::info;
 use tracing_appender::non_blocking;
 use tracing_subscriber::EnvFilter;
 
-mod messaging;
 mod models;
 
 use messaging::subscriber::Subscriber; // trait

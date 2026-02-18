@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use zenoh::{Config, Session};
 
-use crate::messaging::publisher::Publisher;
+use crate::publisher::Publisher;
 
 type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
