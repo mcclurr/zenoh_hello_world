@@ -1,10 +1,14 @@
+use tokio::sync::mpsc;
 use tracing::info;
-use messaging::zenoh::subscriber::ZenohSubscriber;
 
-mod models;
 mod logging;
 mod config;
 mod tasks;
+mod models;
+
+use messaging::subscriber::Message;
+use messaging::zenoh::subscriber::ZenohSubscriber;
+use messaging::subscriber::Subscriber;
 
 type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -13,10 +17,13 @@ async fn main() -> Result<(), DynError> {
     let _log_guard = logging::init_logging("out")?;
     info!("Logger initialized");
 
-    let (tx_hello, rx_hello) = tokio::sync::mpsc::channel::<tasks::types::PipeMsg>(1024);
+    let (tx_hello, rx_hello) = mpsc::channel::<Message>(1024);
 
-    let hello_sub = ZenohSubscriber::new("demo/hello", config::zenoh_client_config()?).await?;
-    let metrics_sub = ZenohSubscriber::new("demo/metrics", config::zenoh_client_config()?).await?;
+    let mut hello_sub = ZenohSubscriber::new(config::zenoh_client_config()?).await?;
+    hello_sub.subscribe("demo/hello").await?;
+
+    let mut metrics_sub = ZenohSubscriber::new(config::zenoh_client_config()?).await?;
+    metrics_sub.subscribe("demo/metrics").await?;
 
     let t1 = tokio::spawn(async move { tasks::hello::run(hello_sub, tx_hello).await });
     let t2 = tokio::spawn(async move { tasks::metrics::run(metrics_sub).await });

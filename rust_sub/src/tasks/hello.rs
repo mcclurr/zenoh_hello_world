@@ -1,33 +1,22 @@
-// src/tasks/hello.rs
-use tracing::info;
 use tokio::sync::mpsc;
+use tracing::info;
 
-use messaging::subscriber::Subscriber;
-use messaging::zenoh::subscriber::ZenohSubscriber;
+use messaging::subscriber::{Message, Subscriber, Result};
 
-use crate::models::hello_msg::HelloMsg;
-use crate::tasks::types::PipeMsg;
-
-type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
-
-pub async fn run(mut sub: ZenohSubscriber, tx: mpsc::Sender<PipeMsg>) -> Result<(), DynError> {
+pub async fn run<S: Subscriber>(
+    mut sub: S,
+    tx: mpsc::Sender<Message>,
+) -> Result<()> {
     loop {
-        let (key, payload) = sub.recv().await?;
+        let msg = sub.next_message().await?;
 
-        if let Ok(s) = std::str::from_utf8(&payload) {
-            match serde_json::from_str::<HelloMsg>(s) {
-                Ok(msg) => info!(
-                    "[HELLO] key={} msg='{}' counter={} temp={} ts={}",
-                    key, msg.msg, msg.counter, msg.temperature, msg.timestamp
-                ),
-                Err(e) => info!("[HELLO] key={} JSON parse failed: {}", key, e),
-            }
+        // your previous logging can stay
+        if let Ok(s) = std::str::from_utf8(&msg.payload) {
+            info!("[HELLO] topic={} payload={}", msg.topic, s);
         }
 
-        // push into pipeline
-        if tx.send(PipeMsg { key, payload }).await.is_err() {
-            // receiver dropped -> exit gracefully
-            info!("[HELLO] pipeline receiver dropped; exiting");
+        if tx.send(msg).await.is_err() {
+            info!("[HELLO] downstream dropped; exiting");
             return Ok(());
         }
     }

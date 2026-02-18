@@ -1,21 +1,21 @@
 // src/tasks/metrics.rs
 use tracing::info;
-use messaging::subscriber::Subscriber;
-use messaging::zenoh::subscriber::ZenohSubscriber;
+
+use messaging::subscriber::{Subscriber, Result};
+
 use crate::models::metrics_msg::MetricsMsg;
 
-type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
-
-pub async fn run(mut sub: ZenohSubscriber) -> Result<(), DynError> {
+pub async fn run<S: Subscriber>(mut sub: S) -> Result<()> {
     loop {
-        let (key_expr, payload) = sub.recv().await?;
-        if let Ok(s) = std::str::from_utf8(&payload) {
+        let msg = sub.next_message().await?;
+
+        if let Ok(s) = std::str::from_utf8(&msg.payload) {
             match serde_json::from_str::<MetricsMsg>(s) {
                 Ok(m) => info!(
-                    "[METRICS] key={} cpu={} mem={} ts={}",
-                    key_expr, m.cpu, m.mem, m.timestamp
+                    "[METRICS] topic={} cpu={} mem={} ts={}",
+                    msg.topic, m.cpu, m.mem, m.timestamp
                 ),
-                Err(e) => info!("[METRICS] key={} JSON parse failed: {}", key_expr, e),
+                Err(e) => info!("[METRICS] topic={} JSON parse failed: {}", msg.topic, e),
             }
         }
     }

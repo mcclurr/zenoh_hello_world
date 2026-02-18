@@ -1,43 +1,50 @@
+use async_trait::async_trait;
 use flume::Receiver;
 use zenoh::{Config, Session};
-use async_trait::async_trait;
 
-use crate::subscriber::Subscriber;
-
-type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
+use crate::subscriber::{Message, Result, Subscriber};
 
 pub struct ZenohSubscriber {
-    _session: Session,               // keep session alive
-    sub: zenoh::pubsub::Subscriber<Receiver<zenoh::sample::Sample>>,
+    session: Session,
+    sub: Option<zenoh::pubsub::Subscriber<Receiver<zenoh::sample::Sample>>>,
 }
 
 impl ZenohSubscriber {
-    pub async fn new(key: &str, config: Config) -> Result<Self, DynError> {
+    pub async fn new(config: Config) -> Result<Self> {
         let session = zenoh::open(config).await?;
-
-        let sub = session
-            .declare_subscriber(key)
-            .with(flume::bounded(64))
-            .await?;
-
-        Ok(Self {
-            _session: session,
-            sub,
-        })
+        Ok(Self { session, sub: None })
     }
 }
 
 #[async_trait]
 impl Subscriber for ZenohSubscriber {
-    async fn recv(&mut self) -> Result<(String, Vec<u8>), DynError> {
-        let sample = self.sub.recv_async().await?;
+    async fn subscribe(&mut self, pattern: &str) -> Result<()> {
+        let sub = self
+            .session
+            .declare_subscriber(pattern)
+            .with(flume::bounded(1024))
+            .await?;
 
-        // key expr
-        let key = sample.key_expr().to_string();
+        self.sub = Some(sub);
+        Ok(())
+    }
 
-        // payload -> bytes (handles fragmented)
-        let bytes: Vec<u8> = sample.payload().to_bytes().to_vec();
+    async fn next_message(&mut self) -> Result<Message> {
+        let sub = self
+            .sub
+            .as_mut()
+            .ok_or_else(|| "ZenohSubscriber: subscribe() not called".to_string())?;
 
-        Ok((key, bytes))
+        let sample = sub.recv_async().await?;
+
+        Ok(Message {
+            topic: sample.key_expr().to_string(),
+            payload: sample.payload().to_bytes().to_vec(),
+            reply_to: None,
+        })
+    }
+
+    async fn is_connected(&self) -> bool {
+        true
     }
 }
