@@ -18,7 +18,7 @@ if __name__ == "__main__":
         pub = session.declare_publisher(KEY)
 
         i = 0
-        while True:
+        while i < 10:
             payload = {
                 "msg": "hello world",
                 "counter": i,
