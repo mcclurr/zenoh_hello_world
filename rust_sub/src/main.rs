@@ -15,7 +15,11 @@ type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[tokio::main]
 async fn main() -> Result<(), DynError> {
-    let _log_guard = logging::init_logging("out")?;
+    let log_dir = "out";
+    let log_name = "RM";
+    let rust_log = "rust_sub=debug,zenoh=info";
+
+    let _log_guard = logging::init_logging(log_dir, log_name, rust_log)?;
     info!("Logger initialized");
 
     let (tx_hello, rx_hello) = mpsc::channel::<Message>(1024);
