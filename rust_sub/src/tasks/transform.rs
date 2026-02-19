@@ -1,31 +1,25 @@
-use tokio::sync::mpsc;
 use tracing::info;
-use serde_json::Value;
+use tokio::sync::mpsc;
+use prost::Message as ProstMessage;
 
 use messaging::subscriber::{Message, Result};
+use crate::proto::demo::HelloMsg;
 
 pub async fn run(mut rx: mpsc::Receiver<Message>) -> Result<()> {
     while let Some(mut msg) = rx.recv().await {
-        let s = match std::str::from_utf8(&msg.payload) {
-            Ok(s) => s,
+        let mut hello = match HelloMsg::decode(&*msg.payload) {
+            Ok(h) => h,
             Err(_) => continue,
         };
 
-        let mut v: Value = match serde_json::from_str(s) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
+        hello.msg = format!("{} goodbye", hello.msg);
 
-        if let Some(old) = v.get("msg").and_then(|x| x.as_str()) {
-            v["msg"] = Value::String(format!("{old} goodbye"));
-        } else {
-            continue;
-        }
+        let mut out = Vec::with_capacity(hello.encoded_len());
+        hello.encode(&mut out)?;
 
-        let out = serde_json::to_string(&v)?;
-        msg.payload = out.into_bytes();
+        msg.payload = out;
 
-        info!("[XFORM] topic={} {}", msg.topic, String::from_utf8_lossy(&msg.payload));
+        info!("[XFORM] topic={} msg={}", msg.topic, hello.msg);
     }
     Ok(())
 }

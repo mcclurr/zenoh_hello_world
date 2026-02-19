@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package demo;
+
+message HelloMsg {
+  string msg = 1;
+  int64  counter = 2;
+  double temperature = 3;
+  string timestamp = 4; // keep ISO string for now
+}

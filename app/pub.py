@@ -1,8 +1,10 @@
 import time
 import zenoh
-import json
 import random
 from datetime import datetime
+
+import hello_pb2
+import metrics_pb2
 
 KEY1 = "demo/hello"
 KEY2 = "demo/metrics"
@@ -21,25 +23,26 @@ if __name__ == "__main__":
 
         i = 0
         while i < 100:
-            payload1 = {
-                "msg": "hello world",
-                "counter": i,
-                "temperature": round(random.uniform(20.0, 30.0), 2),
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            hello = hello_pb2.HelloMsg(
+                msg="hello world",
+                counter=i,
+                temperature=round(random.uniform(20.0, 30.0), 2),
+                timestamp=datetime.utcnow().isoformat(),
+            )
 
-            payload2 = {
-                "cpu": round(random.uniform(0, 100), 1),
-                "mem": round(random.uniform(0, 100), 1),
-                "timestamp": datetime.utcnow().isoformat(),
-            }
+            metrics = metrics_pb2.MetricsMsg(
+                cpu=round(random.uniform(0, 100), 1),
+                mem=round(random.uniform(0, 100), 1),
+                timestamp=datetime.utcnow().isoformat(),
+            )
 
-            data1 = json.dumps(payload1)
-            data2 = json.dumps(payload2)
+            data1 = hello.SerializeToString()     # bytes
+            data2 = metrics.SerializeToString()   # bytes
 
-            print(f"[PUB] sending: {data1}")
+            print(f"[PUB] sending HELLO:\n{hello}")
             pub1.put(data1)
-            print(f"[PUB] sending: {data2}")
+
+            print(f"[PUB] sending METRICS:\n{metrics}")
             pub2.put(data2)
 
             i += 1

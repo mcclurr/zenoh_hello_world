@@ -5,6 +5,7 @@ mod logging;
 mod config;
 mod tasks;
 mod models;
+mod proto;
 
 use messaging::subscriber::Message;
 use messaging::zenoh::subscriber::ZenohSubscriber;

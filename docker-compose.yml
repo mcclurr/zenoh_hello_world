@@ -8,19 +8,25 @@ services:
       - RUST_LOG=info
 
   pub:
-    build: ./app
+    build:
+      context: .
+      dockerfile: app/Dockerfile
     command: ["python", "-u", "pub.py"]
     depends_on:
       - zenoh
 
   sub:
-    build: ./app
+    build:
+      context: .
+      dockerfile: app/Dockerfile
     command: ["python", "-u", "sub.py"]
     depends_on:
       - zenoh
 
   rust_sub:
-    build: ./rust_sub
+    build:
+      context: .
+      dockerfile: rust_sub/Dockerfile
     depends_on:
       - zenoh
     environment:

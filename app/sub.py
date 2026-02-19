@@ -1,11 +1,14 @@
 import time
 import zenoh
+import hello_pb2
 
 KEY = "demo/hello"
 
 def listener(sample):
-    # sample.payload.to_string() works in the docs examples
-    print(f"[SUB] {sample.kind} {sample.key_expr} = {sample.payload.to_string()}")
+    b = sample.payload.to_bytes()  # raw bytes
+    msg = hello_pb2.HelloMsg()
+    msg.ParseFromString(b)
+    print(f"[SUB] {sample.kind} {sample.key_expr} msg={msg.msg} counter={msg.counter} temp={msg.temperature} ts={msg.timestamp}")
 
 if __name__ == "__main__":
     conf = zenoh.Config.from_json5("""
