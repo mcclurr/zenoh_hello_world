@@ -33,3 +33,11 @@ services:
       - RUST_LOG=rust_sub=debug,zenoh=info
     volumes:
       - ./rust_sub/out:/app/out
+
+  rust_test:
+    build:
+      context: .
+      dockerfile: rust_sub/Dockerfile
+      target: test
+    depends_on:
+      - zenoh

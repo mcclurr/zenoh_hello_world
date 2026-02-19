@@ -43,6 +43,9 @@ COPY protos /protos
 
 RUN cargo build --release
 
+# -------- test --------
+FROM builder AS test
+CMD ["cargo", "test", "--", "--nocapture"]
 
 # -------- runtime --------
 FROM debian:bookworm-slim
